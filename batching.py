@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 
-def replace_val(n_values, last_idx, role_val, arity, new_facts_indexes, new_facts_values, train_facts):
+def replace_val(n_values, last_idx, role_val, arity, new_facts_indexes, new_facts_values, whole_train_facts):
     """
     Replace values randomly to get negative samples
     """
@@ -16,7 +16,7 @@ def replace_val(n_values, last_idx, role_val, arity, new_facts_indexes, new_fact
         times = 1
         tmp_array = new_facts_indexes[last_idx + cur_idx]
         tmp_array[role_ind+1] = rmd_dict[tmp_role][rdm_w]
-        while (tuple(tmp_array) in train_facts):
+        while (tuple(tmp_array) in whole_train_facts):
             if (tmp_len == 1) or (times > 2*tmp_len) or (times > 100):
                 tmp_array[role_ind+1] = np.random.randint(0, n_values)
             else:
@@ -26,7 +26,7 @@ def replace_val(n_values, last_idx, role_val, arity, new_facts_indexes, new_fact
         new_facts_indexes[last_idx + cur_idx, role_ind+1] = tmp_array[role_ind+1]
         new_facts_values[last_idx + cur_idx] = [-1]
 
-def replace_role(n_roles, last_idx, arity, new_facts_indexes, new_facts_values, train_facts):
+def replace_role(n_roles, last_idx, arity, new_facts_indexes, new_facts_values, whole_train_facts):
     """
     Replace roles randomly to get negative samples
     """
@@ -36,12 +36,12 @@ def replace_role(n_roles, last_idx, arity, new_facts_indexes, new_facts_values, 
         # Sample a random role
         tmp_array = new_facts_indexes[last_idx + cur_idx]
         tmp_array[role_ind] = rdm_ws[cur_idx]
-        while (tuple(tmp_array) in train_facts):
+        while (tuple(tmp_array) in whole_train_facts):
             tmp_array[role_ind] = np.random.randint(0, n_roles)
         new_facts_indexes[last_idx + cur_idx, role_ind] = tmp_array[role_ind]
         new_facts_values[last_idx + cur_idx] = [-1]
 
-def Batch_Loader(train_facts, values_indexes, roles_indexes, role_val, batch_size, arity):
+def Batch_Loader(train_facts, values_indexes, roles_indexes, role_val, batch_size, arity, whole_train_facts):
     indexes = np.array(list(train_facts.keys())).astype(np.int32)
     values = np.array(list(train_facts.values())).astype(np.float32)
     new_facts_indexes = np.empty((batch_size*2, 2*arity)).astype(np.int32)
@@ -67,9 +67,9 @@ def Batch_Loader(train_facts, values_indexes, roles_indexes, role_val, batch_siz
     n_roles = len(roles_indexes)
     val_role = np.random.randint(np.iinfo(np.int32).max) % (n_values+n_roles)
     if val_role < n_values:  # 0~(n_values-1)
-        replace_val(n_values, last_idx, role_val, arity, new_facts_indexes, new_facts_values, train_facts)
+        replace_val(n_values, last_idx, role_val, arity, new_facts_indexes, new_facts_values, whole_train_facts)
     else:
-        replace_role(n_roles, last_idx, arity, new_facts_indexes, new_facts_values, train_facts)
+        replace_role(n_roles, last_idx, arity, new_facts_indexes, new_facts_values, whole_train_facts)
     last_idx += batch_size
 
     return new_facts_indexes[:last_idx, :], new_facts_values[:last_idx]
