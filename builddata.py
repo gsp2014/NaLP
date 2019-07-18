@@ -104,7 +104,7 @@ def load_data_from_txt(filenames, values_indexes = None, roles_indexes = None, a
                         aline = aline + (role_ind,)
                         aline = aline + (val_ind,)
                         
-            if FLAGS.if_permutate == True:  # Permutate the elements in the fact for further computing the filtered metrics in the test process
+            if FLAGS.if_permutate == True:  # Permutate the elements in the fact for negative sampling or further computing the filtered metrics in the test process
                 if xx_dict['N'] in ary_permutation:
                     res = ary_permutation[xx_dict['N']]
                 else:
