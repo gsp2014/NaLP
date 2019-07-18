@@ -10,6 +10,7 @@ from model import NaLP
 tf.flags.DEFINE_string("data_dir", "./data", "The data dir.")
 tf.flags.DEFINE_string("sub_dir", "WikiPeople", "The sub data dir.")
 tf.flags.DEFINE_string("dataset_name", "WikiPeople", "The name of the dataset.")
+tf.flags.DEFINE_string("wholeset_name", "WikiPeople_permutate", "Name of the whole dataset for negative sampling or computing the filtered metrics.")
 tf.flags.DEFINE_string("model_name", 'WikiPeople', "")
 tf.flags.DEFINE_integer("embedding_dim", 100, "The embedding dimension.")
 tf.flags.DEFINE_integer("n_filters", 200, "The number of filters.")
@@ -34,7 +35,7 @@ logger.info("\nParameters:")
 for attr, value in sorted(FLAGS.__flags.items()):
     logger.info("{}={}".format(attr.upper(), value))
 
-# Load data
+# Load training data
 logger.info("Loading data...")
 afolder = FLAGS.data_dir + '/'
 if FLAGS.sub_dir != '':
@@ -47,6 +48,11 @@ roles_indexes = data_info['roles_indexes']
 role_val = data_info['role_val']
 value_array = np.array(list(values_indexes.values()))
 role_array = np.array(list(roles_indexes.values()))
+
+# Load the whole dataset for negative sampling in "batching.py"
+with open(afolder + FLAGS.wholeset_name + ".bin", 'rb') as fin:
+    data_info1 = pickle.load(fin)
+whole_train = data_info1["train_facts"]
 logger.info("Loading data... finished!")
 
 with tf.Graph().as_default():
@@ -114,7 +120,7 @@ with tf.Graph().as_default():
             for i in range(len(train)):
                 for batch_num in range(n_batches_per_epoch[i]):
                     arity = i + 2  # 2-ary in index 0
-                    x_batch, y_batch = Batch_Loader(train[i], values_indexes, roles_indexes, role_val, FLAGS.batch_size, arity)
+                    x_batch, y_batch = Batch_Loader(train[i], values_indexes, roles_indexes, role_val, FLAGS.batch_size, arity, whole_train[i])
                     tmp_loss = train_step(x_batch, y_batch, arity)
                     train_loss = train_loss + tmp_loss
                 
