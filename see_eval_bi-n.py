@@ -230,7 +230,7 @@ def eval_all(epoch, x_test, y_test, evaluation_queue, result_queue):
         n_ary = i + 2  # 2-ary in index 0
         if epoch == FLAGS.n_epochs: 
             for j in range(2*n_ary):
-                tmp = test_prediction(x_test[i], y_test[i], evaluation_queue, result_queue, i, j)
+                tmp = eval_one(x_test[i], y_test[i], evaluation_queue, result_queue, i, j)
                 tmp_results = tmp[1:]
                 all_loss = all_loss + tmp[0]
                 if j % 2 == 0:
