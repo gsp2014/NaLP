@@ -17,7 +17,7 @@ Build data before training and test for JF17K and [WikiPeople](https://github.co
     python builddata.py --sub_dir JF17K_version1 --dataset_name JF17K_version1
     python builddata.py --sub_dir WikiPeople --dataset_name WikiPeople
 
-Build data for computing the filtered metrics when evaluation:
+Build data for filtering the right facts in negative sampling or computing the filtered metrics when evaluation:
 
     python builddata.py --sub_dir JF17K_version1 --dataset_name JF17K_version1 --if_permutate True --bin_postfix _permutate
     python builddata.py --sub_dir WikiPeople --dataset_name WikiPeople --if_permutate True --bin_postfix _permutate
@@ -25,8 +25,8 @@ Build data for computing the filtered metrics when evaluation:
 ### Training
 To train NaLP:
 
-    python train_only.py --sub_dir JF17K_version1 --dataset_name JF17K_version1 --model_name JF17K_version1_opt  --embedding_dim 100 --n_filters 200 --n_gFCN 1000 --batch_size 128 --learning_rate 0.00005 --n_epochs 5000 --saveStep 100
-    python train_only.py --sub_dir WikiPeople --dataset_name WikiPeople --model_name WikiPeople_opt --embedding_dim 100 --n_filters 200 --n_gFCN 1200 --batch_size 128 --learning_rate 0.00005 --n_epochs 5000 --saveStep 100
+    python train_only.py --sub_dir JF17K_version1 --dataset_name JF17K_version1 --wholeset_name JF17K_version1_permutate --model_name JF17K_version1_opt --embedding_dim 100 --n_filters 200 --n_gFCN 1000 --batch_size 128 --learning_rate 0.00005 --n_epochs 5000 --saveStep 100
+    python train_only.py --sub_dir WikiPeople --dataset_name WikiPeople --wholeset_name WikiPeople_permutate --model_name WikiPeople_opt --embedding_dim 100 --n_filters 200 --n_gFCN 1200 --batch_size 128 --learning_rate 0.00005 --n_epochs 5000 --saveStep 100
             
 ### Evaluation
 Files `see_eval.py` and `see_eval_bi-n.py` provide four evaluation metrics, including the Mean Reciprocal Rank (MRR), Hits@1, Hits@3 and Hits@10 in filtered setting. In these two files, parameter **--valid_or_test** indicates whether to evaluate NaLP in the validation set (set to 1) or test set (set to 2).
