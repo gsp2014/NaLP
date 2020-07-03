@@ -41,23 +41,15 @@ def replace_role(n_roles, last_idx, arity, new_facts_indexes, new_facts_values, 
         new_facts_indexes[last_idx + cur_idx, role_ind] = tmp_array[role_ind]
         new_facts_values[last_idx + cur_idx] = [-1]
 
-def Batch_Loader(train_facts, values_indexes, roles_indexes, role_val, batch_size, arity, whole_train_facts):
-    indexes = np.array(list(train_facts.keys())).astype(np.int32)
-    values = np.array(list(train_facts.values())).astype(np.float32)
+def Batch_Loader(train_batch_indexes, train_batch_values, values_indexes, roles_indexes, role_val, batch_size, arity, whole_train_facts):
     new_facts_indexes = np.empty((batch_size*2, 2*arity)).astype(np.int32)
     new_facts_values = np.empty((batch_size*2, 1)).astype(np.float32)
 
-    idxs = np.random.randint(0, len(values), batch_size)
-    new_facts_indexes[:batch_size, :] = indexes[idxs, :]
-    new_facts_values[:batch_size] = values[idxs, :]
+    idxs = np.random.randint(0, len(train_batch_values), batch_size)
+    new_facts_indexes[:batch_size, :] = train_batch_indexes[idxs, :]
+    new_facts_values[:batch_size] = train_batch_values[idxs, :]
     last_idx = batch_size
-
-    indexes_values = {}
-    for tmpkey in values_indexes:
-        indexes_values[values_indexes[tmpkey]] = tmpkey
-    indexes_roles = {}
-    for tmpkey in roles_indexes:
-        indexes_roles[roles_indexes[tmpkey]] = tmpkey
+    
     # Copy everyting in advance
     new_facts_indexes[last_idx:(last_idx*2), :] = np.tile(
         new_facts_indexes[:last_idx, :], (1, 1))
