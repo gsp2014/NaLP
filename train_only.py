@@ -118,9 +118,11 @@ with tf.Graph().as_default():
         for epoch in range(FLAGS.start_epoch, FLAGS.n_epochs):
             train_loss = 0
             for i in range(len(train)):
+                train_batch_indexes = np.array(list(train[i].keys())).astype(np.int32)
+                train_batch_values = np.array(list(train[i].values())).astype(np.float32)
                 for batch_num in range(n_batches_per_epoch[i]):
                     arity = i + 2  # 2-ary in index 0
-                    x_batch, y_batch = Batch_Loader(train[i], values_indexes, roles_indexes, role_val, FLAGS.batch_size, arity, whole_train[i])
+                    x_batch, y_batch = Batch_Loader(train_batch_indexes, train_batch_values, values_indexes, roles_indexes, role_val, FLAGS.batch_size, arity, whole_train[i])
                     tmp_loss = train_step(x_batch, y_batch, arity)
                     train_loss = train_loss + tmp_loss
                 
