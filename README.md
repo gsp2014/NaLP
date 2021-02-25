@@ -42,7 +42,7 @@ To evaluate NaLP in the test set:
 
 File `see_eval_bi-n.py` provides more detailed results on binary and n-ary relational facts. It is used in the same way as `see_eval.py`.
 
-Note that, it takes a lot of time to evaluate NaLP, since we need to compute a score via NaLP for each candidate (each value/role in the value/role set). To speed up the evaluation process, `see_eval.py` and `see_eval_bi-n.py` are implementated in a multi-process manner.
+Note that, it takes a lot of time to evaluate NaLP, since we need to compute a score via NaLP for each candidate (each value/role in the value/role set). To speed up the evaluation process, `see_eval.py` and `see_eval_bi-n.py` are implemented in a multi-process manner.
 
 ## Citation
 If you found this codebase or our work useful please cite:
