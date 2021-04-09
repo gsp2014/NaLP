@@ -5,8 +5,7 @@ import os
 import pickle
 from multiprocessing import JoinableQueue, Queue, Process
 from log import Logger
-from batching import *
-from model import NaLP
+from importlib import import_module
 
 tf.flags.DEFINE_string("data_dir", "./data", "The data dir.")
 tf.flags.DEFINE_string("sub_dir", "WikiPeople", "The sub data dir.")
@@ -29,14 +28,23 @@ tf.flags.DEFINE_integer("metric_num", 4, "")
 tf.flags.DEFINE_integer("valid_or_test", 1, "validate: 1, test: 2")
 tf.flags.DEFINE_string("gpu_ids", "0,1,2,3", "Comma-separated gpu id")
 tf.flags.DEFINE_string("run_folder", "./", "The dir to store models.")
+tf.flags.DEFINE_string("model_postfix", "", "load which model")
+tf.flags.DEFINE_string("batching_postfix", "", "load which batching source file")
+tf.flags.DEFINE_integer("type_embedding_dim", 30, "The type embedding dimension.")
+tf.flags.DEFINE_integer("n_tFCN", 200, "The number of hidden units of fully-connected layer in t-FCN.")
 
 FLAGS = tf.flags.FLAGS
 FLAGS._parse_flags()
-
+#FLAGS.flag_values_dict()
+model = import_module("model"+FLAGS.model_postfix)
 # The log file to store the parameters and the evaluation details of each epoch
-logger = Logger('logs', str(FLAGS.valid_or_test)+'_evalres_'+FLAGS.model_name+'_'+str(FLAGS.embedding_dim)+'_'+str(FLAGS.n_filters)+'_'+str(FLAGS.n_gFCN)+'_'+str(FLAGS.batch_size)+'_'+str(FLAGS.learning_rate)).logger
+if FLAGS.model_postfix.find("_type") != -1:
+    logger = Logger('logs', str(FLAGS.valid_or_test)+'_evalres_'+FLAGS.model_name+'_'+str(FLAGS.embedding_dim)+'_'+str(FLAGS.type_embedding_dim)+'_'+str(FLAGS.n_filters)+'_'+str(FLAGS.n_gFCN)+'_'+str(FLAGS.n_tFCN)+'_'+str(FLAGS.batch_size)+'_'+str(FLAGS.learning_rate)).logger
+else:
+    logger = Logger('logs', str(FLAGS.valid_or_test)+'_evalres_'+FLAGS.model_name+'_'+str(FLAGS.embedding_dim)+'_'+str(FLAGS.n_filters)+'_'+str(FLAGS.n_gFCN)+'_'+str(FLAGS.batch_size)+'_'+str(FLAGS.learning_rate)).logger
 logger.info("\nParameters:")
 for attr, value in sorted(FLAGS.__flags.items()):
+#for attr, value in sorted(FLAGS.flag_values_dict().items()):
     logger.info("{}={}".format(attr.upper(), value))
 gpu_ids = list(map(int, FLAGS.gpu_ids.split(",")))
 
@@ -101,14 +109,26 @@ class Predictor(Process):
         session_conf = tf.ConfigProto(allow_soft_placement=FLAGS.allow_soft_placement, log_device_placement=FLAGS.log_device_placement)
         session_conf.gpu_options.allow_growth = True
         sess = tf.Session(config=session_conf)
-        aNaLP = NaLP(
-            n_values=len(values_indexes),
-            n_roles=len(roles_indexes),
-            embedding_dim=FLAGS.embedding_dim,
-            n_filters=FLAGS.n_filters,
-            n_gFCN=FLAGS.n_gFCN,
-            batch_size=FLAGS.batch_size,
-            is_trainable=FLAGS.is_trainable)
+        if FLAGS.model_postfix.find("_type") != -1:
+            aNaLP = model.tNaLP(
+                n_values=len(values_indexes),
+                n_roles=len(roles_indexes),
+                embedding_dim=FLAGS.embedding_dim,
+                type_embedding_dim=FLAGS.type_embedding_dim,
+                n_filters=FLAGS.n_filters,
+                n_gFCN=FLAGS.n_gFCN,
+                n_tFCN=FLAGS.n_tFCN,
+                batch_size=FLAGS.batch_size,
+                is_trainable=FLAGS.is_trainable)
+        else:
+            aNaLP = model.NaLP(
+                n_values=len(values_indexes),
+                n_roles=len(roles_indexes),
+                embedding_dim=FLAGS.embedding_dim,
+                n_filters=FLAGS.n_filters,
+                n_gFCN=FLAGS.n_gFCN,
+                batch_size=FLAGS.batch_size,
+                is_trainable=FLAGS.is_trainable)
 
         _file = checkpoint_prefix + "-" + str(self.epoch)
         aNaLP.saver.restore(sess, _file)
@@ -121,9 +141,9 @@ class Predictor(Process):
             else:
                 (x_batch, y_batch, arity, ind) = dat
                 feed_dict = {
-                aNaLP.input_x: x_batch,
-                aNaLP.input_y: y_batch,
-                aNaLP.arity: arity,
+                    aNaLP.input_x: x_batch,
+                    aNaLP.input_y: y_batch,
+                    aNaLP.arity: arity,
                 }
                 scores, loss = sess.run([aNaLP.predictions, aNaLP.loss], feed_dict)
                 self.out_queue.put((scores, loss, ind))
@@ -149,7 +169,10 @@ def eval_one(x_batch, y_batch, evaluation_queue, result_queue, data_index, pred_
             right_index = np.argwhere(value_array == x_batch[i][pred_ind])[0][0]
         new_x_batch = np.tile(x_batch[i], (len(tmp_array), 1))
         new_x_batch[:, pred_ind] = tmp_array
-        new_y_batch = np.tile(np.array([-1]).astype(np.int32), (len(tmp_array), 1))
+        if FLAGS.batching_postfix.find("_bce") != -1:
+            new_y_batch = np.tile(np.array([0]).astype(np.int32), (len(tmp_array), 1))
+        else:
+            new_y_batch = np.tile(np.array([-1]).astype(np.int32), (len(tmp_array), 1))
         new_y_batch[right_index] = [1]
         while len(new_x_batch) % FLAGS.batch_size != 0:
             new_x_batch = np.append(new_x_batch, [x_batch[i]], axis=0)
