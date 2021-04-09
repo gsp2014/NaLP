@@ -4,8 +4,7 @@ np.random.seed(1234)
 import os
 import pickle
 from log import Logger
-from batching import *
-from model import NaLP
+from importlib import import_module
 
 tf.flags.DEFINE_string("data_dir", "./data", "The data dir.")
 tf.flags.DEFINE_string("sub_dir", "WikiPeople", "The sub data dir.")
@@ -25,14 +24,24 @@ tf.flags.DEFINE_integer("saveStep", 100, "Save the model every saveStep")
 tf.flags.DEFINE_boolean("allow_soft_placement", True, "Allow device soft device placement")
 tf.flags.DEFINE_boolean("log_device_placement", False, "Log placement of ops on devices")
 tf.flags.DEFINE_string("run_folder", "./", "The dir to store models.")
+tf.flags.DEFINE_string("model_postfix", "", "load which model")
+tf.flags.DEFINE_string("batching_postfix", "", "load which batching source file")
+tf.flags.DEFINE_integer("type_embedding_dim", 30, "The type embedding dimension.")
+tf.flags.DEFINE_integer("n_tFCN", 200, "The number of hidden units of fully-connected layer in t-FCN.")
 
 FLAGS = tf.flags.FLAGS
 FLAGS._parse_flags()
+model = import_module("model"+FLAGS.model_postfix)
+batching = import_module("batching"+FLAGS.batching_postfix)
 
 # The log file to store the parameters and the training details of each epoch
-logger = Logger('logs', 'run_'+FLAGS.model_name+'_'+str(FLAGS.embedding_dim)+'_'+str(FLAGS.n_filters)+'_'+str(FLAGS.n_gFCN)+'_'+str(FLAGS.batch_size)+'_'+str(FLAGS.learning_rate)).logger
+if FLAGS.model_postfix.find("_type") != -1:
+    logger = Logger('logs', 'run_'+FLAGS.model_name+'_'+str(FLAGS.embedding_dim)+'_'+str(FLAGS.type_embedding_dim)+'_'+str(FLAGS.n_filters)+'_'+str(FLAGS.n_gFCN)+'_'+str(FLAGS.n_tFCN)+'_'+str(FLAGS.batch_size)+'_'+str(FLAGS.learning_rate)).logger
+else:
+    logger = Logger('logs', 'run_'+FLAGS.model_name+'_'+str(FLAGS.embedding_dim)+'_'+str(FLAGS.n_filters)+'_'+str(FLAGS.n_gFCN)+'_'+str(FLAGS.batch_size)+'_'+str(FLAGS.learning_rate)).logger
 logger.info("\nParameters:")
 for attr, value in sorted(FLAGS.__flags.items()):
+#for attr, value in sorted(FLAGS.flag_values_dict().items()):
     logger.info("{}={}".format(attr.upper(), value))
 
 # Load training data
@@ -45,6 +54,8 @@ with open(afolder + FLAGS.dataset_name + ".bin", 'rb') as fin:
 train = data_info["train_facts"]
 values_indexes = data_info['values_indexes']
 roles_indexes = data_info['roles_indexes']
+if FLAGS.batching_postfix.find("_plus") != -1:
+    train_rvs = data_info['train_rvs']
 role_val = data_info['role_val']
 value_array = np.array(list(values_indexes.values()))
 role_array = np.array(list(roles_indexes.values()))
@@ -61,14 +72,26 @@ with tf.Graph().as_default():
     session_conf.gpu_options.allow_growth = True
     sess = tf.Session(config=session_conf)
     with sess.as_default():
-        aNaLP = NaLP(
-            n_values=len(values_indexes),
-            n_roles=len(roles_indexes),
-            embedding_dim=FLAGS.embedding_dim,
-            n_filters=FLAGS.n_filters,
-            n_gFCN=FLAGS.n_gFCN,
-            batch_size=FLAGS.batch_size*2,
-            is_trainable=FLAGS.is_trainable)
+        if FLAGS.model_postfix.find("_type") != -1:
+            aNaLP = model.tNaLP(
+                n_values=len(values_indexes),
+                n_roles=len(roles_indexes),
+                embedding_dim=FLAGS.embedding_dim,
+                type_embedding_dim=FLAGS.type_embedding_dim,
+                n_filters=FLAGS.n_filters,
+                n_gFCN=FLAGS.n_gFCN,
+                n_tFCN=FLAGS.n_tFCN,
+                batch_size=FLAGS.batch_size*2,
+                is_trainable=FLAGS.is_trainable)
+        else:
+            aNaLP = model.NaLP(
+                n_values=len(values_indexes),
+                n_roles=len(roles_indexes),
+                embedding_dim=FLAGS.embedding_dim,
+                n_filters=FLAGS.n_filters,
+                n_gFCN=FLAGS.n_gFCN,
+                batch_size=FLAGS.batch_size*2,
+                is_trainable=FLAGS.is_trainable)
         optimizer = tf.train.AdamOptimizer(learning_rate=FLAGS.learning_rate)
         grads_and_vars = optimizer.compute_gradients(aNaLP.loss)
         train_op = optimizer.apply_gradients(grads_and_vars)
@@ -122,7 +145,10 @@ with tf.Graph().as_default():
                 train_batch_values = np.array(list(train[i].values())).astype(np.float32)
                 for batch_num in range(n_batches_per_epoch[i]):
                     arity = i + 2  # 2-ary in index 0
-                    x_batch, y_batch = Batch_Loader(train_batch_indexes, train_batch_values, values_indexes, roles_indexes, role_val, FLAGS.batch_size, arity, whole_train[i])
+                    if FLAGS.batching_postfix.find("_plus") != -1:
+                        x_batch, y_batch = batching.Batch_Loader(train_batch_indexes, train_batch_values, train_rvs, values_indexes, roles_indexes, role_val, FLAGS.batch_size, arity, whole_train[i])
+                    else:
+                        x_batch, y_batch = batching.Batch_Loader(train_batch_indexes, train_batch_values, values_indexes, roles_indexes, role_val, FLAGS.batch_size, arity, whole_train[i])
                     tmp_loss = train_step(x_batch, y_batch, arity)
                     train_loss = train_loss + tmp_loss
                 
